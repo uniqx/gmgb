@@ -1,31 +1,29 @@
-# Copyright (c) 2010-2011 Michael Pöhn
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
-
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import threading
+import time
 import math
 import gtk
 import glib
 import pyglet.media
 import xml.dom.minidom
+
+class gmgbAudioPlayer():
+	
+	def __init__(self, file_path):
+		#pyglet.media.Player.__init__(self)
+		self.pyglet_player = pyglet.media.Player()
+		self.load_file( file_path )
+		
+	
+	def load_file(self, file_path):
+		self.pyglet_player.mediaSource = pyglet.media.load(file_path)
+		self.pyglet_player.next()
+	
+	def play(self):
+		self.pyglet_player.play()
+		 
 
 class gmgbPlayer(pyglet.media.Player):
 	
@@ -285,17 +283,32 @@ class GameMasterGhettoBlasterGUI(gtk.Window):
 		gtk.main_quit()
 	
 	def tick(self):
-		pyglet.clock.tick()
+		#pyglet.clock.tick()
 		for i, p in self.playerSlots.iteritems():
 			if p.playbackSlider_dragged == False:
 				#p.playbackSlider.set_value(p.mediaPlayer.time)
 				p.tick()
 				#print "gmgb tick "+str(p.mediaPlayer.time)
 		return True
-	
 
+class PygletTicker(threading.Thread):
+	
+	def __init__(self):
+		threading.Thread.__init__(self)
+		self.daemon = True
+		self.start()
+	
+	def run(self):
+		while True:
+			time.sleep(0.01)
+			pyglet.clock.tick()
+		
 if __name__ == "__main__":
 	
 	gmgb_gui = GameMasterGhettoBlasterGUI()
+	
+	pyglet_ticker = PygletTicker()
+	
+	gtk.gdk.threads_init()
 	gtk.main()
 
