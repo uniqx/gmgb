@@ -1,13 +1,16 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import re
+import io
+import os
+import ConfigParser
 import threading
 import time
 import math
 import gtk
 import glib
 import pyglet.media
-import xml.dom.minidom
 
 class gmgbAudioPlayer():
 	
@@ -219,14 +222,22 @@ class GameMasterGhettoBlasterGUI(gtk.Window):
 		self.TICK_INTERVAL = 5
 		glib.timeout_add(self.TICK_INTERVAL, self.tick)
 		
+		# get config reference
+		conf = gmgbConfig()
+		
 		# Window Details
 		
 		self.set_title("Game Master Ghetto Blaster")
 		self.icon_play = self.render_icon(gtk.STOCK_MEDIA_PLAY, gtk.ICON_SIZE_DIALOG)
 		self.set_icon(self.icon_play)
 		self.connect("destroy", self.quit)
-		self.set_size_request(512, 512)
-		self.set_position(gtk.WIN_POS_CENTER)
+		#self.set_position(gtk.WIN_POS_CENTER)
+		self.set_size_request(512,256)
+		self.set_default_size(conf._conf['window_width'], conf._conf['window_height'])
+		self.move(conf._conf['window_pos_x'], conf._conf['window_pos_y'])
+		self.connect('size-allocate',self.size_allocate)
+		#TODO find event for window movement
+		#self.connect('motion-notify-event',self.grab_notify)
 		
 		# Menu
 		
@@ -278,8 +289,18 @@ class GameMasterGhettoBlasterGUI(gtk.Window):
 	#def menu_file_quit(self,menuItem):
 	#	self.quit()
 	
+	def size_allocate(self,window,new_size):
+		conf = gmgbConfig()
+		conf._conf['window_width']  = new_size.width
+		conf._conf['window_height'] = new_size.height
+	
 	def quit(self,arg1=None,arg2=None,arg3=None):
-		#TODO: save everthing
+		
+		conf = gmgbConfig()
+		
+		# save all changes in program state and configuration
+		conf.save()
+		
 		gtk.main_quit()
 	
 	def tick(self):
@@ -292,23 +313,144 @@ class GameMasterGhettoBlasterGUI(gtk.Window):
 		return True
 
 class PygletTicker(threading.Thread):
+	'''
+		This class ticks pyglet.
+		It has to be ticked because pyglet fills the audio playback buffers from
+		within it's main loop. Since we use gtks main loop we have to tick
+		pyglet manual.
+	'''
 	
 	def __init__(self):
 		threading.Thread.__init__(self)
 		self.daemon = True
-		self.start()
 	
 	def run(self):
-		while True:
-			time.sleep(0.01)
-			pyglet.clock.tick()
+		try:
+			while True:
+				time.sleep(0.01)
+				pyglet.clock.tick()
+		except:
+			pass
+
+
+
+
+class gmgbConfig():
+	'''
+		this class offers a persistant storage for playlists and configurations.
+		(singleton)
+	'''
+	def __init__(self):
+			
+		self.__conf_path = os.path.expanduser('~/.gmgb.conf')
+			
+		# initial load, also sets up _conf and _playlists!
+		self.load()
 		
+	
+	def load(self):
+		'''
+			loads all data from the config file into this object
+		'''
+		
+		self._conf = {}
+		self._playlists = {}
+		
+		scp = ConfigParser.SafeConfigParser()
+		
+		# default config
+		scp.readfp(io.BytesIO('''
+[__gmgb_config]
+window_width=512
+window_height=512
+window_pos_x=100
+window_pos_y=20
+
+[blaafoo]
+0_path=/home/michl/Musik/liam lynch - whatever.ogg
+0_repeat=true
+		'''))
+		
+		# parse config file
+		scp.read(self.__conf_path) 
+		
+		
+		# copy configuration
+		self._conf['window_width']  = scp.getint('__gmgb_config','window_width')
+		self._conf['window_height'] = scp.getint('__gmgb_config','window_height')
+		
+		self._conf['window_pos_x'] = scp.getint('__gmgb_config','window_pos_x')
+		self._conf['window_pos_y'] = scp.getint('__gmgb_config','window_pos_y')
+		
+		# copy playlists
+		scp.remove_section('__gmgb_config')
+		for playlist_name in scp.sections():
+			self._playlists[playlist_name] = []
+			#print 'playlist: '+playlist_name
+			for (key, value) in scp.items(playlist_name):
+				key_split = re.split('_',key,maxsplit=1)
+				if len(key_split) == 2:
+					try:
+						self._playlists[playlist_name][int(key_split[0])]
+					except:
+						self._playlists[playlist_name].insert(int(key_split[0]),{})
+						#print 'fail ' + key_split[0]
+					finally:
+						self._playlists[playlist_name][int(key_split[0])][key_split[1]] = value
+						#print key+': '+value
+
+	
+	def save(self):
+		'''
+			saves all data to the config file
+		'''
+		
+		scp = ConfigParser.ConfigParser()
+		
+		for (playlist_name, playlist) in self._playlists.items():
+			scp.add_section(playlist_name)
+			for playlist_index in range(len(playlist)):
+				for (key, value) in playlist[playlist_index].items():
+					scp.set(playlist_name,str(playlist_index)+'_'+key,value)
+		
+		scp.add_section('__gmgb_config')
+		for (key, value) in self._conf.items():
+			scp.set('__gmgb_config',str(key),str(value))
+		
+		print 'saving state and configuration to ' + self.__conf_path
+		with open(self.__conf_path, 'wb') as configfile:
+			scp.write(configfile)
+		
+# singleton constructor fake function for gmgbConfig
+gmgbConfig = lambda single_gmgbConfig=gmgbConfig(): single_gmgbConfig
+
+def _update_position_hack():
+	'''
+		quick and dirty hack to poll the position of the window and write it to the config class
+	'''
+	conf._conf['window_pos_x'], conf._conf['window_pos_y'] = gmgb_gui.get_position() 
+	#print 'window position: ' + str(gmgb_gui.get_position())
+	return True
+
 if __name__ == "__main__":
 	
+	# prevent gtk form blocking our threads.
+	gtk.gdk.threads_init()
+	
+	# get config handler
+	conf = gmgbConfig()
+	
+	# initialize our gtk gui
 	gmgb_gui = GameMasterGhettoBlasterGUI()
 	
-	pyglet_ticker = PygletTicker()
+	# stupid hack -.- see _update_position_hack
+	glib.timeout_add(1000, _update_position_hack)
 	
-	gtk.gdk.threads_init()
+	# make pyglet audio playback capeable.
+	pyglet_ticker = PygletTicker()
+	pyglet_ticker.start()
+	
 	gtk.main()
+	
+	
 
