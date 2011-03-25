@@ -235,9 +235,7 @@ class GameMasterGhettoBlasterGUI(gtk.Window):
 		self.set_size_request(512,256)
 		self.set_default_size(conf._conf['window_width'], conf._conf['window_height'])
 		self.move(conf._conf['window_pos_x'], conf._conf['window_pos_y'])
-		self.connect('size-allocate',self.size_allocate)
-		#TODO find event for window movement
-		#self.connect('motion-notify-event',self.grab_notify)
+		self.connect('configure-event',self.configure_event)
 		
 		# Menu
 		
@@ -289,10 +287,12 @@ class GameMasterGhettoBlasterGUI(gtk.Window):
 	#def menu_file_quit(self,menuItem):
 	#	self.quit()
 	
-	def size_allocate(self,window,new_size):
+	def configure_event(self,window,new_param):
 		conf = gmgbConfig()
-		conf._conf['window_width']  = new_size.width
-		conf._conf['window_height'] = new_size.height
+		conf._conf['window_width']  = new_param.width
+		conf._conf['window_height'] = new_param.height
+		conf._conf['window_pos_x']  = new_param.x
+		conf._conf['window_pos_y']  = new_param.y
 	
 	def quit(self,arg1=None,arg2=None,arg3=None):
 		
@@ -424,13 +424,7 @@ window_pos_y=20
 # singleton constructor fake function for gmgbConfig
 gmgbConfig = lambda single_gmgbConfig=gmgbConfig(): single_gmgbConfig
 
-def _update_position_hack():
-	'''
-		quick and dirty hack to poll the position of the window and write it to the config class
-	'''
-	conf._conf['window_pos_x'], conf._conf['window_pos_y'] = gmgb_gui.get_position() 
-	#print 'window position: ' + str(gmgb_gui.get_position())
-	return True
+
 
 if __name__ == "__main__":
 	
@@ -442,9 +436,6 @@ if __name__ == "__main__":
 	
 	# initialize our gtk gui
 	gmgb_gui = GameMasterGhettoBlasterGUI()
-	
-	# stupid hack -.- see _update_position_hack
-	glib.timeout_add(1000, _update_position_hack)
 	
 	# make pyglet audio playback capeable.
 	pyglet_ticker = PygletTicker()
