@@ -37,13 +37,13 @@ Ubuntu 10.04 LTS - Lucid Lynx:
 
 Windows:
 
-  1) install python 2.6 (source: http://www.python.org/download/releases/2.6.6/)
+  1) install python 2.6 (http://www.python.org/download/releases/2.6.6/)
 
-  2) install gtk+ (source: http://gtk-win.sourceforge.net/home/index.php/en/Downloads)
+  2) install gtk+ (http://gtk-win.sourceforge.net/home/index.php/en/Downloads)
 
-  3) install PyGTK, PyCairo and PyGOjbect (source: http://www.pygtk.org/downloads.html)
+  3) install PyGTK, PyCairo and PyGOjbect (http://www.pygtk.org/downloads.html)
 
-  4) install pyglet (source: http://www.pyglet.org/download.html)
+  4) install pyglet (http://www.pyglet.org/download.html)
 
   5) download GameMasterGhettoBlaster.py form the git-hub repository
 

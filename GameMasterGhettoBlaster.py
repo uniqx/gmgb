@@ -7,6 +7,7 @@ import os
 import ConfigParser
 import threading
 import time
+import textwrap
 import math
 import gtk
 import glib
@@ -359,17 +360,17 @@ class gmgbConfig():
 		scp = ConfigParser.SafeConfigParser()
 		
 		# default config
-		scp.readfp(io.BytesIO('''
-[__gmgb_config]
-window_width=512
-window_height=512
-window_pos_x=100
-window_pos_y=20
-
-[blaafoo]
-0_path=/home/michl/Musik/liam lynch - whatever.ogg
-0_repeat=true
-		'''))
+		scp.readfp(io.BytesIO(textwrap.dedent('''
+			[__gmgb_config]
+			window_width=512
+			window_height=512
+			window_pos_x=100
+			window_pos_y=20
+			
+			[blaafoo]
+			0_path=/home/michl/Musik/liam lynch - whatever.ogg
+			0_repeat=true'''
+		)))
 		
 		# parse config file
 		scp.read(self.__conf_path) 
